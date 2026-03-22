@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>こえもじ — 音声文字起こしチャット</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f0f11;
+    --bg2: #17171a;
+    --bg3: #1e1e23;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0eff4;
+    --text2: #9997a8;
+    --text3: #5c5a6e;
+    --accent: #7c6ff7;
+    --accent2: #a89bf5;
+    --accent-bg: rgba(124,111,247,0.12);
+    --green: #4ade80;
+    --green-bg: rgba(74,222,128,0.1);
+    --red: #f87171;
+    --red-bg: rgba(248,113,113,0.1);
+    --bubble-me: rgba(124,111,247,0.18);
+    --bubble-other: rgba(255,255,255,0.06);
+    --font: 'Noto Sans JP', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ===== SCREENS ===== */
+  .screen { display: none; flex-direction: column; height: 100dvh; }
+  .screen.active { display: flex; }
+
+  /* ===== LOBBY ===== */
+  #lobby {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 0;
+    background: var(--bg);
+  }
+
+  .logo-area {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .logo-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--accent-bg);
+    border: 1px solid rgba(124,111,247,0.3);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 28px;
+  }
+
+  .logo-title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo-sub {
+    font-size: 13px;
+    color: var(--text3);
+    margin-top: 6px;
+    letter-spacing: 0.3px;
+  }
+
+  .lobby-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .tab-row {
+    display: flex;
+    background: var(--bg3);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 9px;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text2);
+    transition: all 0.18s;
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .tab-panel { display: none; flex-direction: column; gap: 14px; }
+  .tab-panel.active { display: flex; }
+
+  .field-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text3);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .input-field {
+    width: 100%;
+    padding: 13px 16px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.18s;
+  }
+  .input-field:focus { border-color: var(--accent); }
+  .input-field::placeholder { color: var(--text3); }
+
+  .name-field {
+    width: 100%;
+    padding: 13px 16px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.18s;
+  }
+  .name-field:focus { border-color: var(--accent); }
+  .name-field::placeholder { color: var(--text3); }
+
+  .pw-wrap {
+    position: relative;
+  }
+  .pw-wrap .input-field {
+    font-family: var(--mono);
+    letter-spacing: 2px;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 15px;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.18s, transform 0.1s;
+    letter-spacing: 0.2px;
+  }
+  .btn-primary:active { opacity: 0.85; transform: scale(0.98); }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text3);
+    font-size: 11px;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .room-code-display {
+    background: var(--bg3);
+    border: 1px solid rgba(124,111,247,0.25);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .room-code-label { font-size: 11px; color: var(--text3); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 8px; }
+  .room-code-val {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--accent2);
+    letter-spacing: 6px;
+  }
+  .room-code-hint { font-size: 11px; color: var(--text3); margin-top: 8px; }
+
+  .error-msg {
+    font-size: 12px;
+    color: var(--red);
+    text-align: center;
+    min-height: 16px;
+  }
+
+  /* ===== CHAT SCREEN ===== */
+  #chat { background: var(--bg); }
+
+  .chat-header {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .header-room {
+    flex: 1;
+    min-width: 0;
+  }
+  .header-room-label { font-size: 10px; color: var(--text3); letter-spacing: 0.8px; text-transform: uppercase; }
+  .header-room-code {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--accent2);
+    letter-spacing: 3px;
+    margin-top: 1px;
+  }
+
+  .header-members {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .members-dot {
+    width: 7px; height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .members-count { font-size: 12px; color: var(--text2); }
+
+  .btn-leave {
+    padding: 7px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text2);
+    font-family: var(--font);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .btn-leave:hover { border-color: var(--red); color: var(--red); }
+
+  /* messages */
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-behavior: smooth;
+  }
+  #messages::-webkit-scrollbar { width: 3px; }
+  #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg-row {
+    display: flex;
+    flex-direction: column;
+    max-width: 88%;
+    animation: fadeUp 0.22s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-row.me { align-self: flex-end; align-items: flex-end; }
+  .msg-row.other { align-self: flex-start; align-items: flex-start; }
+
+  .msg-meta {
+    font-size: 10px;
+    color: var(--text3);
+    margin-bottom: 4px;
+    padding: 0 4px;
+  }
+
+  .msg-bubble {
+    padding: 11px 14px;
+    border-radius: 16px;
+    font-size: 15px;
+    line-height: 1.55;
+    word-break: break-word;
+  }
+  .msg-row.me .msg-bubble {
+    background: var(--bubble-me);
+    border: 1px solid rgba(124,111,247,0.2);
+    border-bottom-right-radius: 4px;
+  }
+  .msg-row.other .msg-bubble {
+    background: var(--bubble-other);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+
+  .msg-time {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 3px;
+    padding: 0 4px;
+  }
+
+  /* interim / typing */
+  .interim-row {
+    align-self: flex-end;
+    max-width: 88%;
+    padding: 10px 14px;
+    background: var(--accent-bg);
+    border: 1px dashed rgba(124,111,247,0.3);
+    border-radius: 16px;
+    border-bottom-right-radius: 4px;
+    font-size: 15px;
+    color: var(--text2);
+    line-height: 1.55;
+    animation: fadeUp 0.18s ease;
+    font-style: italic;
+  }
+
+  .system-msg {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text3);
+    padding: 4px 0;
+  }
+
+  /* mic bar */
+  .mic-bar {
+    padding: 14px 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mic-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mic-status-text {
+    font-size: 12px;
+    color: var(--text3);
+  }
+  .mic-status-text.listening { color: var(--green); }
+  .mic-status-text.error { color: var(--red); }
+
+  .mic-btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 14px;
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.18s;
+    letter-spacing: 0.2px;
+  }
+
+  .mic-btn.idle {
+    background: var(--accent);
+    color: #fff;
+  }
+  .mic-btn.listening {
+    background: var(--green-bg);
+    border: 1.5px solid var(--green);
+    color: var(--green);
+  }
+  .mic-btn.listening .mic-icon { animation: mic-pulse 1s ease-in-out infinite; }
+  @keyframes mic-pulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+
+  .wave-bars {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 18px;
+  }
+  .wave-bar {
+    width: 3px;
+    background: var(--green);
+    border-radius: 2px;
+    animation: wave 0.8s ease-in-out infinite;
+  }
+  .wave-bar:nth-child(1) { animation-delay: 0s;    height: 6px; }
+  .wave-bar:nth-child(2) { animation-delay: 0.15s; height: 12px; }
+  .wave-bar:nth-child(3) { animation-delay: 0.3s;  height: 18px; }
+  .wave-bar:nth-child(4) { animation-delay: 0.15s; height: 12px; }
+  .wave-bar:nth-child(5) { animation-delay: 0s;    height: 6px; }
+  @keyframes wave {
+    0%,100% { transform: scaleY(1); }
+    50% { transform: scaleY(0.4); }
+  }
+
+  /* ===== FIREBASE CONFIG NOTICE ===== */
+  .config-notice {
+    background: rgba(248,113,113,0.08);
+    border: 1px solid rgba(248,113,113,0.25);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .config-notice strong { color: var(--red); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--accent-bg);
+    border: 1px solid rgba(124,111,247,0.2);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--accent2);
+    font-family: var(--mono);
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== LOBBY ===== -->
+<div id="lobby" class="screen active">
+  <div class="logo-area">
+    <div class="logo-icon">🎙️</div>
+    <div class="logo-title">こえもじ</div>
+    <div class="logo-sub">音声をリアルタイムで文字に変換するチャット</div>
+  </div>
+
+  <div class="lobby-card">
+    <!-- Firebase未設定の場合の案内 -->
+    <div id="config-notice" class="config-notice" style="display:none">
+      <strong>⚠ Firebase未設定</strong><br>
+      ページ内の <span class="badge">YOUR_API_KEY</span> を自分の設定値に置き換えてください。<br>
+      設定後にリロードすると使えるようになります。
+    </div>
+
+    <div>
+      <div class="field-label">あなたの名前</div>
+      <input id="username-input" class="name-field" type="text" placeholder="名前を入力" maxlength="20" autocomplete="off">
+    </div>
+
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchTab('create')">部屋を作る</button>
+      <button class="tab-btn" onclick="switchTab('join')">部屋に入る</button>
+    </div>
+
+    <!-- 作る -->
+    <div id="tab-create" class="tab-panel active">
+      <div>
+        <div class="field-label">パスワード（4文字以上）</div>
+        <input id="create-pw" class="input-field" type="text" placeholder="例: abc1" maxlength="12" autocomplete="off">
+      </div>
+      <div id="new-room-display" style="display:none">
+        <div class="room-code-display">
+          <div class="room-code-label">ルームコード</div>
+          <div class="room-code-val" id="new-room-code">——</div>
+          <div class="room-code-hint">このコードと上のパスワードを仲間に共有してください</div>
+        </div>
+      </div>
+      <div class="error-msg" id="create-error"></div>
+      <button class="btn-primary" onclick="createRoom()">部屋を作成</button>
+    </div>
+
+    <!-- 入る -->
+    <div id="tab-join" class="tab-panel">
+      <div>
+        <div class="field-label">ルームコード</div>
+        <input id="join-code" class="input-field" type="text" placeholder="例: A3X7" maxlength="4" autocomplete="off" style="font-family:var(--mono);letter-spacing:4px;text-transform:uppercase">
+      </div>
+      <div>
+        <div class="field-label">パスワード</div>
+        <div class="pw-wrap">
+          <input id="join-pw" class="input-field" type="text" placeholder="パスワード" maxlength="12" autocomplete="off">
+        </div>
+      </div>
+      <div class="error-msg" id="join-error"></div>
+      <button class="btn-primary" onclick="joinRoom()">入室する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CHAT ===== -->
+<div id="chat" class="screen">
+  <div class="chat-header">
+    <div class="header-room">
+      <div class="header-room-label">ルーム</div>
+      <div class="header-room-code" id="header-code">——</div>
+    </div>
+    <div class="header-members">
+      <div class="members-dot"></div>
+      <div class="members-count" id="members-count">— 人</div>
+    </div>
+    <button class="btn-leave" onclick="leaveRoom()">退出</button>
+  </div>
+
+  <div id="messages"></div>
+
+  <div class="mic-bar">
+    <div class="mic-status-row">
+      <span class="mic-status-text" id="mic-status">マイクボタンを押して話す</span>
+    </div>
+    <button id="mic-btn" class="mic-btn idle" onclick="toggleMic()">
+      <span class="mic-icon">🎤</span>
+      <span id="mic-btn-text">話す</span>
+      <span class="wave-bars" id="wave-bars" style="display:none">
+        <span class="wave-bar"></span>
+        <span class="wave-bar"></span>
+        <span class="wave-bar"></span>
+        <span class="wave-bar"></span>
+        <span class="wave-bar"></span>
+      </span>
+    </button>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getDatabase, ref, push, onValue, set, get, onDisconnect, serverTimestamp }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+  // ============================================================
+  // 🔧 ここに Firebase の設定を貼り付けてください
+  // ============================================================
+  const firebaseConfig = {
+    apiKey:            "AIzaSyDa2RFiX9QHypf0_jAdjgQTJO4yML-JYYs",
+    authDomain:        "voice-comunication-web.firebaseapp.com",
+    databaseURL:       "https://voice-comunication-web-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId:         "voice-comunication-web",
+    storageBucket:     "voice-comunication-web.firebasestorage.app",
+    messagingSenderId: "736780355795",
+    appId:             "1:736780355795:web:1b3168d9e4c556db11ec26"
+  };
+  // ============================================================
+
+  const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+  if (!isConfigured) {
+    document.getElementById('config-notice').style.display = 'block';
+  }
+
+  let app, db;
+  if (isConfigured) {
+    app = initializeApp(firebaseConfig);
+    db  = getDatabase(app);
+  }
+
+  // ---- state ----
+  let currentRoom = null;
+  let myName = '';
+  let myId = 'u_' + Math.random().toString(36).slice(2, 8);
+  let recognition = null;
+  let isListening = false;
+  let memberRef = null;
+  let unsubMessages = null;
+  let unsubMembers = null;
+
+  // ---- tab switch ----
+  window.switchTab = (tab) => {
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+      b.classList.toggle('active', (i === 0) === (tab === 'create'));
+    });
+    document.getElementById('tab-create').classList.toggle('active', tab === 'create');
+    document.getElementById('tab-join').classList.toggle('active', tab === 'join');
+  };
+
+  // ---- generate room code ----
+  function genCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    return Array.from({length: 4}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  }
+
+  // ---- create room ----
+  window.createRoom = async () => {
+    const name = document.getElementById('username-input').value.trim();
+    const pw   = document.getElementById('create-pw').value.trim();
+    const errEl = document.getElementById('create-error');
+    errEl.textContent = '';
+
+    if (!name) { errEl.textContent = '名前を入力してください'; return; }
+    if (pw.length < 4) { errEl.textContent = 'パスワードは4文字以上にしてください'; return; }
+    if (!isConfigured) { errEl.textContent = 'Firebaseの設定が必要です'; return; }
+
+    const code = genCode();
+    const roomRef = ref(db, `rooms/${code}`);
+    await set(roomRef, { password: pw, createdAt: serverTimestamp(), createdBy: name });
+    document.getElementById('new-room-code').textContent = code;
+    document.getElementById('new-room-display').style.display = 'block';
+    myName = name;
+    enterChat(code);
+  };
+
+  // ---- join room ----
+  window.joinRoom = async () => {
+    const name = document.getElementById('username-input').value.trim();
+    const code = document.getElementById('join-code').value.trim().toUpperCase();
+    const pw   = document.getElementById('join-pw').value.trim();
+    const errEl = document.getElementById('join-error');
+    errEl.textContent = '';
+
+    if (!name) { errEl.textContent = '名前を入力してください'; return; }
+    if (code.length !== 4) { errEl.textContent = 'ルームコードは4文字です'; return; }
+    if (!isConfigured) { errEl.textContent = 'Firebaseの設定が必要です'; return; }
+
+    const snap = await get(ref(db, `rooms/${code}`));
+    if (!snap.exists()) { errEl.textContent = 'ルームが見つかりません'; return; }
+    if (snap.val().password !== pw) { errEl.textContent = 'パスワードが違います'; return; }
+
+    myName = name;
+    enterChat(code);
+  };
+
+  // ---- enter chat ----
+  function enterChat(code) {
+    currentRoom = code;
+    document.getElementById('header-code').textContent = code;
+    document.getElementById('lobby').classList.remove('active');
+    document.getElementById('chat').classList.add('active');
+    document.getElementById('messages').innerHTML = '';
+    addSystemMsg(`ルーム ${code} に参加しました`);
+
+    // presence
+    memberRef = ref(db, `rooms/${code}/members/${myId}`);
+    set(memberRef, { name: myName, joinedAt: serverTimestamp() });
+    onDisconnect(memberRef).remove();
+
+    // listen members
+    unsubMembers = onValue(ref(db, `rooms/${code}/members`), snap => {
+      const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+      document.getElementById('members-count').textContent = `${count} 人`;
+    });
+
+    // listen messages
+    unsubMessages = onValue(ref(db, `rooms/${code}/messages`), snap => {
+      if (!snap.exists()) return;
+      const data = snap.val();
+      const keys = Object.keys(data).sort();
+      const messagesEl = document.getElementById('messages');
+      const isNearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+
+      // build existing set
+      const existingIds = new Set([...messagesEl.querySelectorAll('[data-msgid]')].map(el => el.dataset.msgid));
+
+      keys.forEach(k => {
+        if (existingIds.has(k)) return;
+        const msg = data[k];
+        renderMessage(k, msg);
+      });
+
+      if (isNearBottom) messagesEl.scrollTop = messagesEl.scrollHeight;
+    });
+  }
+
+  // ---- render message ----
+  function renderMessage(id, msg) {
+    const messagesEl = document.getElementById('messages');
+    const isMe = msg.senderId === myId;
+    const div = document.createElement('div');
+    div.className = `msg-row ${isMe ? 'me' : 'other'}`;
+    div.dataset.msgid = id;
+
+    const t = msg.time ? new Date(msg.time).toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}) : '';
+    div.innerHTML = `
+      <div class="msg-meta">${isMe ? 'あなた' : escHtml(msg.sender)}</div>
+      <div class="msg-bubble">${escHtml(msg.text)}</div>
+      <div class="msg-time">${t}</div>
+    `;
+    messagesEl.appendChild(div);
+  }
+
+  function addSystemMsg(text) {
+    const messagesEl = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'system-msg';
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ---- leave room ----
+  window.leaveRoom = () => {
+    if (isListening) stopListening();
+    if (memberRef) set(memberRef, null);
+    if (unsubMessages) unsubMessages();
+    if (unsubMembers) unsubMembers();
+    currentRoom = null;
+    document.getElementById('chat').classList.remove('active');
+    document.getElementById('lobby').classList.add('active');
+  };
+
+  // ---- mic ----
+  window.toggleMic = () => {
+    if (!isConfigured) {
+      document.getElementById('mic-status').textContent = 'Firebaseの設定が必要です';
+      document.getElementById('mic-status').className = 'mic-status-text error';
+      return;
+    }
+    isListening ? stopListening() : startListening();
+  };
+
+  function startListening() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      setMicStatus('このブラウザは音声認識に対応していません', 'error');
+      return;
+    }
+    recognition = new SR();
+    recognition.lang = 'ja-JP';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let interimEl = null;
+
+    recognition.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        if (res.isFinal) {
+          const text = res[0].transcript.trim();
+          if (text) {
+            if (interimEl) { interimEl.remove(); interimEl = null; }
+            sendMessage(text);
+          }
+        } else {
+          interim += res[0].transcript;
+        }
+      }
+      if (interim) {
+        if (!interimEl) {
+          interimEl = document.createElement('div');
+          interimEl.className = 'interim-row';
+          document.getElementById('messages').appendChild(interimEl);
+        }
+        interimEl.textContent = interim;
+        const m = document.getElementById('messages');
+        m.scrollTop = m.scrollHeight;
+      } else if (interimEl) {
+        interimEl.remove(); interimEl = null;
+      }
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error === 'not-allowed') {
+        setMicStatus('マイクへのアクセスが拒否されました', 'error');
+      } else if (e.error !== 'no-speech') {
+        setMicStatus(`エラー: ${e.error}`, 'error');
+      }
+      stopListening(false);
+    };
+
+    recognition.onend = () => {
+      if (isListening) recognition.start(); // continuous restart
+    };
+
+    recognition.start();
+    isListening = true;
+    setMicState(true);
+    setMicStatus('聞いています…', 'listening');
+  }
+
+  function stopListening(updateState = true) {
+    isListening = false;
+    if (recognition) { recognition.onend = null; recognition.stop(); recognition = null; }
+    if (updateState) {
+      setMicState(false);
+      setMicStatus('マイクボタンを押して話す', '');
+    }
+  }
+
+  function setMicState(listening) {
+    const btn = document.getElementById('mic-btn');
+    const txt = document.getElementById('mic-btn-text');
+    const wave = document.getElementById('wave-bars');
+    btn.className = `mic-btn ${listening ? 'listening' : 'idle'}`;
+    txt.textContent = listening ? '聞いています' : '話す';
+    wave.style.display = listening ? 'flex' : 'none';
+  }
+
+  function setMicStatus(msg, cls) {
+    const el = document.getElementById('mic-status');
+    el.textContent = msg;
+    el.className = `mic-status-text ${cls}`;
+  }
+
+  // ---- send message ----
+  async function sendMessage(text) {
+    if (!currentRoom || !db) return;
+    await push(ref(db, `rooms/${currentRoom}/messages`), {
+      sender: myName,
+      senderId: myId,
+      text: text,
+      time: Date.now()
+    });
+  }
+</script>
+</body>
+</html>
