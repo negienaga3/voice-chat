@@ -8,22 +8,39 @@
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap');
 
   :root {
-    --bg: #0f0f11;
-    --bg2: #17171a;
-    --bg3: #1e1e23;
-    --border: rgba(255,255,255,0.08);
-    --text: #f0eff4;
-    --text2: #9997a8;
-    --text3: #5c5a6e;
-    --accent: #7c6ff7;
-    --accent2: #a89bf5;
-    --accent-bg: rgba(124,111,247,0.12);
-    --green: #4ade80;
-    --green-bg: rgba(74,222,128,0.1);
-    --red: #f87171;
-    --red-bg: rgba(248,113,113,0.1);
-    --bubble-me: rgba(124,111,247,0.18);
+    --bg: #F3F1E0;
+    --bg2: #ECEADA;
+    --bg3: #E2E0CE;
+    --border: rgba(0,0,0,0.10);
+    --text: #2a2820;
+    --text2: #6b6856;
+    --text3: #9e9b88;
+    --accent: #5b52d4;
+    --accent2: #4039b8;
+    --accent-bg: rgba(91,82,212,0.10);
+    --green: #16a34a;
+    --green-bg: rgba(22,163,74,0.10);
+    --red: #dc2626;
+    --red-bg: rgba(220,38,38,0.08);
+    --bubble-me: rgba(59,130,246,0.20);
     --bubble-other: rgba(255,255,255,0.06);
+    /* ユーザーカラー（参加順に割り当て） */
+    --uc-0: rgba(59,130,246,0.25);   /* 青（自分固定） */
+    --uc-1: rgba(234,179,8,0.28);    /* 黄色 */
+    --uc-2: rgba(236,72,153,0.22);   /* ピンク */
+    --uc-3: rgba(124,111,247,0.22);  /* 紫 */
+    --uc-4: rgba(132,204,22,0.25);   /* 黄緑 */
+    --uc-5: rgba(6,182,212,0.22);    /* 水色 */
+    --uc-6: rgba(249,115,22,0.25);   /* オレンジ */
+    --uc-7: rgba(20,184,166,0.22);   /* 青緑 */
+    --ub-0: rgba(59,130,246,0.60);
+    --ub-1: rgba(234,179,8,0.65);
+    --ub-2: rgba(236,72,153,0.55);
+    --ub-3: rgba(124,111,247,0.55);
+    --ub-4: rgba(132,204,22,0.60);
+    --ub-5: rgba(6,182,212,0.55);
+    --ub-6: rgba(249,115,22,0.60);
+    --ub-7: rgba(20,184,166,0.55);
     --font: 'Noto Sans JP', sans-serif;
     --mono: 'DM Mono', monospace;
   }
@@ -119,7 +136,7 @@
     transition: all 0.18s;
   }
   .tab-btn.active {
-    background: var(--accent);
+    background: #1e3a6e;
     color: #fff;
   }
 
@@ -176,7 +193,7 @@
   .btn-primary {
     width: 100%;
     padding: 15px;
-    background: var(--accent);
+    background: #3b82f6;
     border: none;
     border-radius: 12px;
     color: #fff;
@@ -326,15 +343,20 @@
     word-break: break-word;
   }
   .msg-row.me .msg-bubble {
-    background: var(--bubble-me);
-    border: 1px solid rgba(124,111,247,0.2);
     border-bottom-right-radius: 4px;
   }
   .msg-row.other .msg-bubble {
-    background: var(--bubble-other);
-    border: 1px solid var(--border);
     border-bottom-left-radius: 4px;
   }
+  /* ユーザーカラー（色番号ごと） */
+  .uc-0 { background: var(--uc-0); border: 1px solid var(--ub-0); }
+  .uc-1 { background: var(--uc-1); border: 1px solid var(--ub-1); }
+  .uc-2 { background: var(--uc-2); border: 1px solid var(--ub-2); }
+  .uc-3 { background: var(--uc-3); border: 1px solid var(--ub-3); }
+  .uc-4 { background: var(--uc-4); border: 1px solid var(--ub-4); }
+  .uc-5 { background: var(--uc-5); border: 1px solid var(--ub-5); }
+  .uc-6 { background: var(--uc-6); border: 1px solid var(--ub-6); }
+  .uc-7 { background: var(--uc-7); border: 1px solid var(--ub-7); }
 
   .msg-time {
     font-size: 10px;
@@ -581,8 +603,8 @@
     databaseURL:       "https://voice-comunication-web-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId:         "voice-comunication-web",
     storageBucket:     "voice-comunication-web.firebasestorage.app",
-    messagingSenderId: "736780355795",
-    appId:             "1:736780355795:web:1b3168d9e4c556db11ec26"
+    messagingSenderId: "1:736780355795:web:1b3168d9e4c556db11ec26"
+    appId:             
   };
   // ============================================================
 
@@ -606,6 +628,21 @@
   let memberRef = null;
   let unsubMessages = null;
   let unsubMembers = null;
+  // ユーザーごとの色管理
+  const userColorMap = {};  // senderId → 色番号
+
+  function getColorIndex(senderId) {
+    if (!(senderId in userColorMap)) {
+      if (senderId === myId) {
+        userColorMap[senderId] = 0; // 自分は常に青（0番）
+      } else {
+        // 2人目以降は1〜7でループ
+        const otherCount = Object.values(userColorMap).filter(v => v !== 0).length;
+        userColorMap[senderId] = (otherCount % 7) + 1;
+      }
+    }
+    return userColorMap[senderId];
+  }
 
   // ---- tab switch ----
   window.switchTab = (tab) => {
@@ -669,6 +706,9 @@
     document.getElementById('lobby').classList.remove('active');
     document.getElementById('chat').classList.add('active');
     document.getElementById('messages').innerHTML = '';
+    // 色マップをリセット（自分の色を0番に固定）
+    Object.keys(userColorMap).forEach(k => delete userColorMap[k]);
+    userColorMap[myId] = 0; // 自分は常に青
     addSystemMsg(`ルーム ${code} に参加しました`);
 
     // presence
@@ -707,6 +747,7 @@
   function renderMessage(id, msg) {
     const messagesEl = document.getElementById('messages');
     const isMe = msg.senderId === myId;
+    const colorIdx = getColorIndex(msg.senderId);
     const div = document.createElement('div');
     div.className = `msg-row ${isMe ? 'me' : 'other'}`;
     div.dataset.msgid = id;
@@ -714,7 +755,7 @@
     const t = msg.time ? new Date(msg.time).toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}) : '';
     div.innerHTML = `
       <div class="msg-meta">${isMe ? 'あなた' : escHtml(msg.sender)}</div>
-      <div class="msg-bubble">${escHtml(msg.text)}</div>
+      <div class="msg-bubble uc-${colorIdx}">${escHtml(msg.text)}</div>
       <div class="msg-time">${t}</div>
     `;
     messagesEl.appendChild(div);
